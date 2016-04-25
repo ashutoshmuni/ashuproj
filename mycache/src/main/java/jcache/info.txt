@@ -1,0 +1,1 @@
+http://download.oracle.com/otndocs/jcp/jcache-1_0-fr-eval-spec/index.html
