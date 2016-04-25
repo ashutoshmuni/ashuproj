@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+<!-- instLang.xml - Ant buildfile for 7i Extended lnaguage deployment -->
+<project name="Datastream7i Extended Deploy" default="all" basedir=".">
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties">
+	<classpath>
+		 <pathelement location="D:\\neeraj bali\\UploadDocs\\lib\\ant-contrib-1.0b3.jar"/>
+	</classpath>
+	</taskdef>
+	<taskdef name="js-gen" classname="com.dstm.common.util.LanguageJsGenerator">
+	<classpath>
+		<pathelement location="D:\\neeraj bali\\UploadDocs\\lib\\log4j.jar"/>
+		<pathelement location="D:\\neeraj bali\\UploadDocs\\lib\\mp_common.jar"/>
+		<pathelement location="D:\\neeraj bali\\UploadDocs\\lib\\mp_tools.jar"/>
+	</classpath>
+	</taskdef>
+  <!-- Set specific platform properties -->
+  <!-- Installation specific parameters through properties file -->
+	<target name="envshared">
+		
+		<xmlproperty file="extended_properties.xml"
+				semanticAttributes="true" includeSemanticAttribute="true"/>
+    <!-- Let's define the platform we're on -->
+		<condition property="os.family" value="unix">
+			<os family="unix"/>
+		</condition>
+		
+		<if>
+			<equals arg1="${os.family}" arg2="unix"/>
+			<then>
+				<property environment="env"/>
+				<property name="tenant" value="${env.TENANT}"/>
+				<echo message="tenant = ${tenant}"/>
+				<property environment="env"/>
+				<property name="langs" value="${env.LANGUAGES}"/>
+				<echo message="langs = ${langs}"/>
+				<property name="script.home" value="${env.SCRIPT_HOME}"/>
+				<echo message="script.home = ${script.home}"/>
+			</then>
+		</if>
+		
+		<condition property="os.family" value="windows">
+			<os family="windows"/>
+		</condition>
+		
+		<if>
+			<equals arg1="${os.family}" arg2="windows"/>
+			<then>
+				<property environment="env"/>
+				<property name="tenant" value="${env.TENANT}"/>
+				<echo message="tenant = ${tenant}"/>
+				<property environment="env"/>
+				<property name="langs" value="${env.LANGUAGES}"/>
+				<echo message="langs = ${langs}"/>
+				<property name="script.home" value="${env.SCRIPT_HOME}"/>
+			</then>
+		</if>    
+
+    <!-- Plus, don't forget that os.name will give -->
+    <!-- the specific os we're on -->
+		<condition property="install.platform" value="win32">
+			<equals arg1="${os.name}" arg2="Windows 2000"/>
+		</condition>
+		
+		<condition property="install.platform" value="win32">
+			<equals arg1="${os.name}" arg2="Windows XP"/>
+		</condition>
+		
+		<condition property="install.platform" value="win32">
+			<equals arg1="${os.name}" arg2="Windows 2003"/>
+		</condition>
+		
+		<condition property="install.platform" value="linux">
+			<equals arg1="${os.name}" arg2="Linux"/>
+		</condition>
+		
+		<condition property="install.platform" value="solaris">
+			<equals arg1="${os.name}" arg2="SunOS"/>
+		</condition>
+	</target>
+
+
+	<target name="gen-tenant"  >
+		<mkdir dir="${script.home}"/>
+		<js-gen tenant="${tenant}" lang="${langs}" dir="${script.home}"/>
+	</target>
+
+
+	<target name="all" depends="envshared,gen-tenant">
+	</target>
+</project>

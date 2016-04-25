@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<project name="FileUpload" default="main" basedir=".">
+	<property name="hms.root" value="C:\HMS"/>
+	<property name="src.dir" value="src"/>
+	<property name="lib.dir" value="lib"/>
+	<property name="build.dir" value="build"/>
+	<property name="classes.dir" value="${build.dir}/classes"/>
+	<property name="jar.dir" value="${build.dir}/jar"/>
+	<property name="main-class" value="FileUpload"/>
+	<property file="C:\HMS\depconfig\app_home.properties"/>
+	<xmlproperty
+		file="${ews.gen_info.app.home}\jboss\server\jboss01\conf\MPConfiguration.xml" collapseAttributes="true"/>
+	<xmlproperty file="${ews.gen_info.app.home}\depconfig\ewsconfig.xml" collapseAttributes="true"/>
+	<property name="mk.prop" value="${ews.gen_info.app.home}\depconfig\mkphrase.properties"/>
+	<taskdef resource="net/sf/antcontrib/antlib.xml">
+		<classpath>
+			<pathelement location="${lib.dir}/ant-contrib-1.0b3.jar"/>
+		</classpath>
+	</taskdef>
+	<path id="build.classpath">
+		<fileset dir="${lib.dir}">
+			<include name="*.jar"/>
+		</fileset>
+		<fileset dir="${build.dir}">
+			<include name="app_home.properties"/>
+		</fileset>
+		<pathelement path="${lib.dir}/sqljdbc4.jar"/>
+	</path>
+	<target name="clean">
+		<delete dir="${classes.dir}"/>
+		<delete dir="${jar.dir}"/>
+		<delete dir="${build.dir}"/>
+	</target>
+	<target name="prepare" depends="clean">
+		<mkdir dir="${build.dir}"/>
+		<mkdir dir="${classes.dir}"/>
+		<mkdir dir="${jar.dir}"/>
+		<mkdir dir="${src.dir}"/>
+	</target>
+	<target name="compile" depends="prepare">
+		<javac srcdir="${src.dir}" destdir="${classes.dir}" classpathref="build.classpath" includeantruntime="false"/>
+		<copy file="${hms.root}/depconfig/ewsconfig.xml" todir="${build.dir}/classes"/>
+		<copy file="${hms.root}/depconfig/mkphrase.properties" todir="${build.dir}/classes"/>	
+	</target>
+	<target name="jar" depends="compile">
+		<jar destfile="${jar.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+			<manifest>
+				<attribute name="Class-Path" value="${lib.dir}"/>
+				<attribute name="Main-Class" value="${main-class}"/>
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="run" depends="compile" description="Run FileUpload">
+		<for list="${ews-config.db-connections.db-connection.name}" param="tenant.name">
+			<sequential>
+				<java classname="FileUpload" failonerror="true" fork="true">
+					<classpath>
+						<pathelement location="${build.dir}/classes"/>
+						<pathelement path="${lib.dir}/sqljdbc4.jar"/>
+						<pathelement path="${lib.dir}/ant-1.7.0.jar"/>
+						<pathelement path="${lib.dir}/ant-contrib-1.0b3.jar"/>
+						<pathelement path="${lib.dir}/castor-0.9.3.19-xml.jar"/>
+						<pathelement path="${lib.dir}/mp_common.jar" />
+						<pathelement path="${lib.dir}/mp_dao.jar" />
+						<pathelement path="${lib.dir}/mp_tools.jar" />
+						<pathelement path="${lib.dir}/xml-apis-2.9.1.jar"/>
+						<pathelement path="${lib.dir}/log4j.jar"/>
+						<pathelement path="${lib.dir}/xercesImpl-2.9.1.jar"/>	
+					</classpath>
+					<arg value="${main-class}"/>
+					<arg value="${MPConfiguration.DocUpload.UPLOADDIR}"/>
+					<arg value="${MPConfiguration.TenantDataSourceList.TenantDataSource}"/>
+					<arg value="@{tenant.name}" />
+				</java>
+			</sequential>
+		</for>
+	</target>
+	<target name="main" depends="run">
+		<echo message="main target completed.."/>
+	</target>
+</project>

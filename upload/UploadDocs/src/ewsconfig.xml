@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- This file defines datasources (schemas, databases) for the SoftBrands 
+	HMS application: In this file you can edit/remove connection information: 
+	name - the name of the connection, has to be matched with the tenant name 
+	in the MPConfiguration.xml file host - host name of the Oracle server port 
+	- port number Oracle Listener is running on SID - SID or service name of 
+	the Oracle DB user - schema/user name password - schema/user access password. 
+	min-size - number of the connections created during application server startup 
+	max-size - maximum number of the connections allowed per data source. The 
+	following is an example of the configuration for Oracle: <db-connection name="DS_MP_1"> 
+	<url>jdbc:oracle:thin:@[host]:[port]:[SID]</url> <driver>oracle.jdbc.driver.OracleDriver</driver> 
+	<user>[user]</user> <password>[password]</password> <min-size>5</min-size> 
+	<max-size>10</max-size> <idle-timeout-minutes>1</idle-timeout-minutes> </db-connection> 
+	The following is an example of the configuration for Microsoft SQL server: 
+	<db-connection name="DS_MP_1"> <url>jdbc:jtds:sqlserver://[host]:[port]/[database 
+	name];ProgramName=Infor;SelectMethod=cursor;useLOBs=false</url> <driver>net.sourceforge.jtds.jdbc.Driver</driver> 
+	<user>[user]</user> <password>[password]</password> <min-size>5</min-size> 
+	<max-size>10</max-size> <idle-timeout-minutes>1</idle-timeout-minutes> </db-connection> 
+	*) All values specified as [....] should be replaced with installation-specific 
+	values. -->
+<ews-config>
+	<db-connections>
+		<!-- Application main database -->
+		<db-connection name="HMS_1">
+			<url>jdbc:sqlserver://10.20.0.77:1433;DatabaseName=Hms371_1013;ApplicationName=HMS;LoginTimeout=300</url>
+			<driver>com.microsoft.sqlserver.jdbc.SQLServerXADataSource</driver>
+			<user>hmsuser</user>
+			<password>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</password>
+			<min-size>80</min-size>
+			<max-size>100</max-size>
+			<idle-timeout-minutes>1</idle-timeout-minutes>
+		</db-connection>
+		<!-- Operational Data Store database -->
+		<db-connection name="ODSHMS_1" tenant="false">
+			<url>jdbc:sqlserver://10.20.0.77:1433;DatabaseName=Hms371_1013;ApplicationName=HMS;LoginTimeout=300</url>
+			<driver>com.microsoft.sqlserver.jdbc.SQLServerXADataSource</driver>
+			<user>hmsuser</user>
+			<password>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</password>
+			<min-size>5</min-size>
+			<max-size>30</max-size>
+			<idle-timeout-minutes>1</idle-timeout-minutes>
+		</db-connection>
+		<!-- Messaging database -->
+		<db-connection name="HMSMessagingDB" tenant="false">
+			<url>jdbc:sqlserver://10.20.0.77:1433;DatabaseName=Hms371_1013;ApplicationName=HMS;LoginTimeout=300</url>
+			<driver>com.microsoft.sqlserver.jdbc.SQLServerXADataSource</driver>
+			<user>hmsuser</user>
+			<password>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</password>
+			<min-size>60</min-size>
+			<max-size>80</max-size>
+			<idle-timeout-minutes>1</idle-timeout-minutes>
+		</db-connection>
+	</db-connections>
+</ews-config>

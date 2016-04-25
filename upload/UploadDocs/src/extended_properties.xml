@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ews>
+    <!-- Parameters associated with application server installation --> 
+    <gen_info> 
+        <app>
+            <hostname>localhost</hostname> 
+        </app>
+        <singlesignon enabled="false">       
+            <clienthomedir>${ews.gen_info.app.home}/ssoclienthome</clienthomedir>
+            <idpentityid/>
+            <eamentityid/>
+        </singlesignon>
+        <db> 
+            <securitykeyword>PESgFfg900Y\=%enc%</securitykeyword>
+            <hostname>10.20.0.77</hostname> 
+            <port>1433</port> 
+            <instance>false</instance> 
+            <type>mssql</type> 
+            <version>false</version> 
+            <catalog>Hms371_1028</catalog> 
+            <schema_name>hmsuser</schema_name> 
+            <schema_pass>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</schema_pass> 
+        </db> 
+        <odsdb> 
+            <hostname>10.20.0.77</hostname> 
+            <port>1433</port> 
+            <instance>false</instance> 
+            <type>mssql</type> 
+            <version>false</version> 
+            <catalog>Hms371_1028</catalog> 
+            <schema_name>hmsuser</schema_name> 
+            <schema_pass>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</schema_pass> 
+        </odsdb> 
+        <msgdb> 
+            <hostname>10.20.0.77</hostname> 
+            <port>1433</port> 
+            <instance>false</instance> 
+            <type>mssql</type> 
+            <version>false</version> 
+            <catalog>Hms371_1028</catalog> 
+            <schema_name>hmsuser</schema_name> 
+            <schema_pass>KU+RatHJlpVgJmrza8p+ug\=\=%enc%</schema_pass> 
+        </msgdb> 
+        <web>
+          <http>
+             <port>80</port>
+             <ssl>false</ssl>
+          </http>
+          <https>
+             <port>443</port>
+          </https>
+         <!--servername>localhost.yourdomain.com</servername-->
+         <servername>Neeraj-B.India.XoriantCorp.com</servername>
+        </web>
+        <advrep>
+        <!-- The ADVREPTSERVERNAME is the fully qualified domain name of the advanced reporting server -->
+           <servername>false</servername>
+           <port>false</port>
+           <gatewaypath>false</gatewaypath>
+           <protocol>http</protocol>
+        </advrep>
+        <ssrsrep>
+        <!--  The Reporting Services is the fully qualified domain name of the advanced reporting server  --> 
+           <servername>false</servername>
+           <port>false</port>
+           <gatewaypath>/false</gatewaypath>
+           <protocol>http</protocol>
+        </ssrsrep>
+           <data home="${ews.gen_info.app.home}/data"> 
+           </data> 
+    </gen_info> 
+
+    <!-- information specific to the installed components --> 
+    <component> 
+        <jboss base_name="jboss" home="${ews.gen_info.app.home}/jboss"> 
+            <!-- Number of jboss instances.  From 1 to 9 --> 
+            <instances>1</instances> 
+            <jvm_min>1024</jvm_min> 
+            <jvm_max>1536</jvm_max> 
+            <jvmArchitecture>64</jvmArchitecture> 
+            <SSLAllowWeakNegotiation>true</SSLAllowWeakNegotiation> 
+            <port increment="100"> 
+                        <jndi>1099</jndi>
+                        <web>8083</web> 
+                        <rmi>4444</rmi> 
+                        <jms-uil2>8093</jms-uil2>
+                        <jmx-rmi>19001</jmx-rmi>
+            </port>
+        </jboss> 
+        <tomcat base_name="tomcat" home="${ews.component.jboss.home}" jvmRoute_base="ajp13_"> 
+                <!-- Base port numbers from server.xml --> 
+                <port increment="100"> 
+                        <ctrl>8005</ctrl> 
+                        <http>8080</http> 
+                        <redirect>8443</redirect>
+                        <ajp>8009</ajp>
+                </port>
+        </tomcat>
+        <apache home="${ews.gen_info.app.home}/apache"> 
+	</apache>
+	<depconfig>
+	    <home>${ews.gen_info.app.home}/depconfig</home> 
+	</depconfig>
+
+    </component>
+</ews>
