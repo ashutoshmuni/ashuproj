@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd
+    	http://www.springframework.org/schema/util
+    	http://www.springframework.org/schema/util/spring-util-3.0.xsd
+    	http://www.springframework.org/schema/task 
+    	http://www.springframework.org/schema/task/spring-task.xsd">
+
+	<bean id="ssoAuthFilter" class="com.citi.rulefabricator.servlet.filter.AuthFilter">
+		<property name="userService" ref="userServiceImpl"/>
+		<property name="mongoUtil" ref="mongoUtil" />
+		<property name="applicationRoleServiceImpl" ref="applicationRoleServiceImpl" />
+	</bean>
+
+	<bean id="outboundsDatabaseManager" class="com.citi.rulefabricator.outbounds.database.OutboundsDatabaseManager">
+		<property name="mergeProcessorFactory" ref="mergeProcessorFactory"/>
+		<property name="masterAttributeService" ref="masterAttributeService"/>		
+	</bean>
+	
+	<bean id="dbSyncJob" class="com.citi.rulefabricator.outbounds.database.DBSyncJob">
+	<property name="dbSyncQueueImpl" ref="dbSyncQueueImpl"/>
+	<property name="dbSyncProcessor" ref="syncWithRetryProcessor"/>
+	<property name="retryProcessor" ref="retryProcessor"/>
+	<property name="maxRetries" value="${system.max.retry.prop}"/>
+	<property name="delay" value="${system.max.delay.dbsync.prop}"/>
+	</bean>
+	
+	<bean id="changeHelperManager" class="com.citi.rulefabricator.processors.ChangeProcessorManager" />
+	
+	<bean id="abstractChangeProcessor" class="com.citi.rulefabricator.processors.AbstractChangeProcessor" abstract="true">
+	    <property name="sequenceMongoDAOImpl" ref="sequenceMongoDAOImpl"/>
+	    <property name="myRequestsDAOMongoImpl" ref="myRequestsDAOMongoImpl"/>
+	    <property name="changeRequestSummaryDAOImpl" ref="changeRequestSummaryDAOMongoImpl"/>
+		<property name="mongoUtil" ref="mongoUtil" />
+		<property name="changeHelperManager" ref="changeHelperManager" />
+	</bean>
+	
+	<bean id="rulDefChangeProcessor" class="com.citi.rulefabricator.processors.RuleDefChangeProcessor" parent="abstractChangeProcessor">
+		<property name="ruleDefMongoDAOImpl" ref="ruleDefMongoDAOImpl" />
+		<property name="ruleDefChangeDAOImpl" ref="ruleDefChangeMongoDAOImpl" />
+		<property name="ruleInstMongoDAOImpl" ref="ruleInstMongoDAOImpl"/>
+		<property name="mapDefMongoDAOImpl" ref="mapDefDAOMongoImpl"/>
+		<property name="mapDefChangeDAOMongoImpl" ref="mapDefChangeDAOMongoImpl"/>
+		<property name="ruleInstChangeMongoDAOImpl" ref="ruleInstChangeMongoDAOImpl"/>
+		<property name="ruleInstChangeProcessor" ref="ruleInstChangeProcessor"/>
+		<property name="changeRequestSummaryService" ref="changeRequestSummaryService"/>
+	</bean>
+	
+	<bean id="ruleInstChangeProcessor" class="com.citi.rulefabricator.processors.RuleInstChangeProcessor" parent="abstractChangeProcessor">
+		<property name="ruleInstChangeMongoDAOImpl" ref="ruleInstChangeMongoDAOImpl" />
+		<property name="ruleInstMongoDAOImpl" ref="ruleInstMongoDAOImpl" />
+		<property name="mapDefMongoDAOImpl" ref="mapDefDAOMongoImpl"/>
+		<property name="attributeValidator" ref="attributeValidator"/>
+		<property name="mapDefChangeDAOMongoImpl" ref="mapDefChangeDAOMongoImpl"/>
+		<property name="ruleDefMongoDAOImpl" ref="ruleDefMongoDAOImpl"/>
+		<property name="changeRequestSummaryService" ref="changeRequestSummaryService"/>
+		<property name="actorSystem" ref="actorSystem"/>
+	</bean>
+	
+	<bean id="mapGroupChangeProcessor" class="com.citi.rulefabricator.processors.MapGroupChangeProcessor" parent="abstractChangeProcessor">
+		<property name="mapGroupDAOMongoImpl" ref="mapGroupDAOMongoImpl" />
+		<property name="groupDefChangeDAOMongoImpl" ref="groupDefChangeDAOMongoImpl" />
+		<property name="mapGroupJMSHelper" ref="mapGroupJMSHelper"/>
+		<property name="changeRequestSummaryService" ref="changeRequestSummaryService"/>
+	</bean>
+	
+	<bean id="mapDefChangeProcessor" class="com.citi.rulefabricator.processors.MapDefChangeProcessor" parent="abstractChangeProcessor">
+		<property name="mapDefDAOMongoImpl" ref="mapDefDAOMongoImpl" />
+		<property name="mapDefChangeDAOMongoImpl" ref="mapDefChangeDAOMongoImpl" />
+		<property name="ruleDefChangeDAOMongoImpl" ref="ruleDefChangeMongoDAOImpl"/>
+		<property name="ruleDefChangeProcessor" ref="rulDefChangeProcessor"/>
+		<property name="changeRequestSummaryService" ref="changeRequestSummaryService"/>
+	</bean>
+	
+    <bean id="mongoUtil" class="com.citi.rulefabricator.mongo.MongoUtil">
+        <property name="objectMapper" ref="objectMapper"/>
+         <property name="ingnoreNullObjectMapper" ref="ingnoreNullObjectMapper"/>
+         <property name="ignoreEmptyObjectMapper" ref="ignoreEmptyObjectMapper"/>
+    </bean>
+	<bean id="objectMapper"
+		class="org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean">
+		<property name="modulesToInstall"
+			value="com.citi.rulefabricator.jackon.converters.MongoCodecModule" />
+	</bean>
+	<bean id="ingnoreNullObjectMapper"
+		class="org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean">
+		<property name="serializationInclusion">
+			<util:constant
+				static-field="com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL" />
+		</property>
+		<property name="modulesToInstall"
+			value="com.citi.rulefabricator.jackon.converters.MongoCodecModule" />
+	</bean>
+	
+	<bean id="ignoreEmptyObjectMapper"
+		class="org.springframework.http.converter.json.Jackson2ObjectMapperFactoryBean">
+		<property name="serializationInclusion">
+			<util:constant
+				static-field="com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY" />
+		</property>
+		<property name="modulesToInstall"
+			value="com.citi.rulefabricator.jackon.converters.MongoCodecModule" />
+	</bean>
+	
+	<bean id="actorSystem" class="akka.actor.ActorSystem" factory-method="create" destroy-method="shutdown" scope="singleton">
+    	<constructor-arg value="rulefabricatorsystem" />
+	</bean>
+
+	<bean id="attrHelper" class="com.citi.rulefabricator.soap.services.masterattr.helper.AttributeHelper">
+		<property name="masterAttribWSClient" ref="masterAttribWSClientDummy" />
+	</bean>		
+		
+	<bean id="applicationRoleHelper" class="com.citi.rulefabricator.services.helper.ApplicationRoleHelper">
+		<property name="downloadFilePath" value="${export.file.path}" />
+		<property name="applicationRoleDAOMongoImpl" ref="applicationRoleDAOMongoImpl"/>
+	</bean>	
+		
+	<bean id="workflowServiceHelper" class="com.citi.rulefabricator.services.helper.WorkflowServiceHelper">
+		<property name="downloadFilePath" value="${export.file.path}" />
+		<property name="workflowDAOMongoImpl" ref="workflowDAOMongoImpl"/>
+	</bean>		
+	
+	<bean id="xmlMapper"
+		class="com.citi.rulefabricator.services.impl.JaxbXMLMapperServiceImpl">
+		<property name="marshaller" ref="jaxb2Marshaller"></property>
+	</bean>
+	
+	<bean id="jaxb2Marshaller" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+        <!-- <property name="contextPath" value="com.citi.rulefabricator.dto"/> this requires additional jaxb.index file-->
+         <property name="classesToBeBound">
+            <list>
+                <value>com.citi.rulefabricator.dto.FFSWorkflowRequestDTO</value>
+                <value>com.citi.rulefabricator.dto.FFSWorkflowResponseDTO</value>
+                <value>com.citi.rulefabricator.dto.FFSWorkflowAcknowledgementDTO</value>
+            </list>
+         </property>
+    </bean>
+    
+    <bean id="outboundXmlMapper"
+		class="com.citi.rulefabricator.services.impl.JaxbXMLMapperServiceImpl">
+		<property name="marshaller" ref="jaxb2MarshallerForOutbound"></property>
+	</bean>
+	
+	<bean id="jaxb2MarshallerForOutbound" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+         <property name="classesToBeBound">
+            <list>
+                <value>com.citi.rulefabricator.dto.jms.outbound.FBBEventDTO</value>
+            </list>
+         </property>
+    </bean>
+    
+	<bean id="mapGroupXmlMapper"
+		class="com.citi.rulefabricator.services.impl.JaxbXMLMapperServiceImpl">
+		<property name="marshaller" ref="jaxb2MarshallerForMapGroup"></property>
+	</bean>
+	
+	<bean id="jaxb2MarshallerForMapGroup" class="org.springframework.oxm.jaxb.Jaxb2Marshaller">
+         <property name="classesToBeBound">
+            <list>
+                <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupRequestDTO</value>
+                <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupRequestBodyDTO</value>
+                <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupDeleteRequestBodyDTO</value>
+                <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupResponseDTO</value>
+                <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupResponseBodyDTO</value>
+                <!-- <value>com.citi.rulefabricator.dto.jms.mapgroup.MapGroupDeleteResponseBodyDTO</value> -->
+            </list>
+         </property>
+    </bean>
+    
+    <bean id="attributeValueCacheHelper" class="com.citi.rulefabricator.cache.impl.EhCacheHelper" destroy-method="shutdownCache">
+    	<property name="cacheManager" ref="ehCacheManager"/>
+    	<property name="cacheName" value="${master.attributes.cache.name}"/>
+    </bean>
+    
+    	<bean id="columnSizeEhCacheWrapper" class="com.citi.rulefabricator.cache.impl.EhCacheHelper"
+		destroy-method="shutdownCache">
+		<property name="cacheManager" ref="ehCacheManager" />
+		<property name="cacheName" value="${outbounds.column.size.cache.name}" />
+	</bean>
+    
+    <bean id="attributeCodeNameCacheHelper" class="com.citi.rulefabricator.cache.impl.EhCacheHelper" destroy-method="shutdownCache">
+    	<property name="cacheManager" ref="ehCacheManager"/>
+    	<property name="cacheName" value="${master.attributes.name.code.mapping.cache.name}" />
+    </bean>
+    
+    <bean id="ehCacheManager" class="net.sf.ehcache.CacheManager" 
+    	factory-method="newInstance" />
+
+	<bean id="attributeValidator" class="com.citi.rulefabricator.util.AttributeValidator">
+		<property name="masterAttributeService" ref="masterAttributeService" />
+		<property name="validationFailsService" ref="validationFailsService" />
+	</bean>
+	
+	<bean id="multiActorFileImportManager" class="com.citi.rulefabricator.akka.importers.MultiActorFileImportManager" scope="prototype" >
+		<property name="actorSystem" ref="actorSystem"/>
+		<property name="taskService" ref="taskService"/>
+		<property name="importFilePath" value="${import.file.path}" />
+	</bean>
+	
+	<bean id="ruleDefDTOBuilder" class="com.citi.rulefabricator.csvbuilder.RuleDefDTOBuilder">
+     <constructor-arg name="xsltPath" value="${io.file.path.xslt}" />
+     <constructor-arg name="xsdPath" value="${io.file.path.xsd}" />
+     <constructor-arg name="tagValue" value="${rule.def.io.xsd.tag}" />
+     <constructor-arg name="attrDefImpl" ref="attributeDefImpl"/>
+     <constructor-arg name="mongoUtil" ref="mongoUtil"/>
+    </bean>
+    
+    <bean id="mapDtoBuilder" class="com.citi.rulefabricator.csvbuilder.MapDtoBuilder">
+    	<constructor-arg value="${io.file.path.xslt}" />
+    	<constructor-arg value="${io.file.path.xsd}" />
+    </bean>
+    
+    <bean id="ruleInstValidationManager" class="com.citi.rulefabricator.akka.validate.RuleInstValidationManager">
+    	<property name="actorSystem" ref="actorSystem"/>
+    </bean>
+
+    <bean id="multiRuleInstBatchActorExecutor" class="com.citi.rulefabricator.akka.validate.executors.MultiRuleInstBatchExecutor" scope="prototype"/>
+
+    <bean id="ruleInstExportHandler" class="com.citi.rulefabricator.export.handler.RuleInstExportHandler">
+        <property name="taskService" ref="taskService"/>
+        <property name="mapDefService" ref="mapDefServive"/>     
+        <property name="downloadFilePath" value="${export.file.path}"/>
+        <property name="excelWriteContext" ref="excelWriteContext"/>
+        <property name="actorSystem" ref="actorSystem"/>
+    </bean>
+    
+    <bean id="myRequestsExportHandler" class="com.citi.rulefabricator.export.handler.MyRequestsExportHandler">
+		<property name="downloadFilePath" value="${export.file.path}" />
+	</bean>	
+	
+	<task:scheduler id="scheduler"/>
+	
+	 <task:scheduled-tasks scheduler="scheduler">
+	    <task:scheduled ref="masterAttributeService" method="refreshAttributesAndCacheValues" cron="${masterattribute.delta.update.interval.cron.expression}" />
+	    <task:scheduled ref="masterAttributeService" method="refreshCacheValues" cron="${masterattribute.values.update.interval.cron.expression}" />
+	    <task:scheduled ref="masterAttributeService" method="refreshAllAttributesAndCacheValues" cron="${masterattribute.full.update.interval.cron.expression}" />
+	    <task:scheduled ref="dbSyncJob" method="dbSync" cron="${dbSyncJob.sync.interval.cron.expression}" />
+	    
+	</task:scheduled-tasks>
+	
+	<bean id="validationFailureExportHandler" class="com.citi.rulefabricator.export.handler.ValidationFailureExportHandler">
+		<property name="downloadFilePath" value="${export.file.path}" />
+		<property name="validationFailsService" ref="validationFailsService"/>
+		<property name="ruleInstChangeMongoDAOImpl" ref="ruleInstChangeMongoDAOImpl"/>
+	</bean>
+	
+	<bean id="excelWriteContext" class="com.citi.rulefabricator.export.handler.excel.ExcelWriteContext"/>
+	
+	<bean id="outBoundWriter" class="com.citi.rulefabricator.outbounds.file.writer.OutBoundsWriter">
+	    <property name="taskService" ref="taskService"/>
+	</bean>
+	
+	<bean id="outboundQuery1Processor" class="com.citi.rulefabricator.outbounds.file.query.processor.OutboundQuery1Processor">
+	    <property name="attributeDefDAOMongoImpl" ref="attributeDefImpl"/>
+		<property name="mapGroupDAOMongImpl" ref="mapGroupDAOMongoImpl"/>
+		<property name="mapDefDAOMongoImpl" ref="mapDefDAOMongoImpl"/>
+		<property name="outboundDAOMongoImpl" ref="outboundDAOMongoImpl"/>
+		<property name="ruleDefDAOMongImpl" ref="ruleDefMongoDAOImpl"/>
+		<property name="mongoUtil" ref="mongoUtil"/>
+		<property name="writer" ref="outBoundWriter"/>
+		<property name="taskService" ref="taskService"/>
+		<property name="downloadBasePath" value="${outbounds.export.base.location}"/>
+	</bean>
+    <bean id="commonHelper" class="com.citi.rulefabricator.services.helper.CommonHelper">
+		<property name="mapDefDAOMongoImpl" ref="mapDefDAOMongoImpl" />
+		<property name="mapDefChangeDAOMongoImpl" ref="mapDefChangeDAOMongoImpl"/>
+		<property name="mongoUtil" ref="mongoUtil"/>
+		<property name="myRequestsDAOMongoImpl" ref="myRequestsDAOMongoImpl"/>
+	</bean>
+	
+    <bean id="outboundQuery2Processor" class="com.citi.rulefabricator.outbounds.file.query.processor.OutboundQuery2Processor">
+		<property name="outboundsQueryJDBCDAOImpl" ref="outboundsQueryJDBCDAOImpl"/>
+		<property name="outboundDAOMongoImpl" ref="outboundDAOMongoImpl"/>
+		<property name="mongoUtil" ref="mongoUtil"/>
+		<property name="writer" ref="outBoundWriter"/>
+		<property name="taskService" ref="taskService"/>
+		<property name="downloadBasePath" value="${outbounds.export.base.location}"/>
+	</bean>
+	
+    <bean id="sqlQueryProcessor" class="com.citi.rulefabricator.outbounds.file.query.processor.SQLQueryProcessor">
+		<property name="outboundsQueryJDBCDAOImpl" ref="outboundsQueryJDBCDAOImpl"/>
+		<property name="outboundDAOMongoImpl" ref="outboundDAOMongoImpl"/>
+		<property name="mongoUtil" ref="mongoUtil"/>
+		<property name="writer" ref="outBoundWriter"/>
+		<property name="taskService" ref="taskService"/>
+		<property name="fdlDownloadBasePath" value="${outbounds.export.fdl.base.location}"/>
+		<property name="l2gDownloadBasePath" value="${outbounds.export.l2g.base.location}"/>
+		<property name="templateUtil" ref="outboundTemplateUtil"/>
+	</bean>
+
+	
+
+	<bean id="baseMergeProcessor" abstract="true"
+		class="com.citi.rulefabricator.outbounds.database.processors.AbstractMergeProcessor">
+		<property name="searchDAOMongoImpl" ref="searchDAOMongoImpl" />
+		<property name="mongoUtil" ref="mongoUtil" />
+		<property name="outboundsDAOJdbcImpl" ref="outboundsDAOJdbcImpl" />
+		<property name="dbMetaDataService" ref="dbMetadataService" />
+		<property name="mapgroupTblName" value="${outboundsdb.table.mapgroup}" />
+		<property name="mapTblName" value="${outboundsdb.table.map}" />
+		<property name="mapdefTblName" value="${outboundsdb.table.mapdef}" />
+		<property name="mapdefinpTblName" value="${outboundsdb.table.mapdef.inp}" />
+		<property name="mapdefoutTblName" value="${outboundsdb.table.mapdef.out}" />
+		<property name="mapdatainpTblName" value="${outboundsdb.table.mapdata.inp}" />
+		<property name="mapdataoutTblName" value="${outboundsdb.table.mapdata.out}" />
+		<property name="mapdatadetlTblName" value="${outboundsdb.table.mapdata.detl}" />
+	</bean>
+   
+	<bean id="mapDefDatabaseMergeProcessor"
+		class="com.citi.rulefabricator.outbounds.database.processors.MapDefMergeProcessor" parent="baseMergeProcessor"/>
+
+	<bean id="mapGroupDatabaseMergeProcessor"
+		class="com.citi.rulefabricator.outbounds.database.processors.MapGroupMergeProcessor" parent="baseMergeProcessor"/>
+		
+   
+	<bean id="ruleDefDatabaseMergeProcessor"
+		class="com.citi.rulefabricator.outbounds.database.processors.RuleDefMergeProcessor" parent="baseMergeProcessor"/>
+   
+	<bean id="ruleInstDatabaseMergeProcessor"
+		class="com.citi.rulefabricator.outbounds.database.processors.RuleInstMergeProcessor" parent="baseMergeProcessor">
+		<property name="attributeDefImpl" ref="attributeDefImpl"/>
+	</bean>
+   
+   <bean id="mergeProcessorFactory" class="com.citi.rulefabricator.outbounds.database.processors.MergeProcessorFactory"/> 	 	
+   
+   <bean id="outboundQuery3Processor" class="com.citi.rulefabricator.outbounds.file.query.processor.OutboundQuery3Processor">
+		<property name="outboundDAOMongoImpl" ref="outboundDAOMongoImpl"/>
+		<property name="mongoUtil" ref="mongoUtil"/>
+		<property name="writer" ref="outBoundWriter"/>
+		<property name="taskService" ref="taskService"/>
+		<property name="ruleDefDAOMongImpl" ref="ruleDefMongoDAOImpl"/>
+		<property name="masterAttributeService" ref="masterAttributeService"/>
+		<property name="mapGroupDAOMongImpl" ref="mapGroupDAOMongoImpl"/>
+		<property name="ruleInstDAOMongoImpl" ref="ruleInstMongoDAOImpl"/>
+		<property name="actorSystem" ref="actorSystem"/>
+		<property name="outBoundsBasePath" value="${outbounds.export.base.location}"/>
+	</bean>
+	
+   	<bean id="outBoundsExportFileManager" class="com.citi.rulefabricator.outbounds.file.OutboundsExportFileManager">
+       	<property name="taskService" ref="taskService"/>
+        <property name="actorSystem" ref="actorSystem" />
+        <property name="outboundDAOMongoImpl" ref="outboundDAOMongoImpl"/>
+        <property name="mongoUtil" ref="mongoUtil"/>
+        <property name="xmlMapper" ref="outboundXmlMapper"/>
+        <property name="fileTransferDetService" ref="fileTransferDetServiceImpl"/>
+     </bean>
+     
+     <bean id="retryProcessor" class="com.citi.rulefabricator.outbounds.RetryProcessor"/>
+     
+	<bean id="syncWithRetryProcessor"
+		class="com.citi.rulefabricator.outbounds.database.processors.DBSyncProcessor">
+     	<property name="outboundsDbManager" ref="outboundsDatabaseManager"/>
+     	<property name="maxRetryCount" value="${system.max.retry.prop}"/>
+     	<property name="retryProcessor" ref="retryProcessor"/>
+     	<property name="dbSyncQueueImpl" ref="dbSyncQueueImpl"/>
+     	<property name="delay" value="${system.max.delay.dbsync.failure.prop}"/>
+		<property name="dbMetaDataService" ref="dbMetadataService" />
+     </bean>
+     
+   <bean id="lock" class="java.util.concurrent.locks.ReentrantLock"/>
+   
+    <bean id="freemarkerConfig" class="freemarker.template.Configuration">
+         <property name="templateLoader" ref="stringTemplateLoader"/>
+    </bean>
+    
+    <bean id="stringTemplateLoader" class="freemarker.cache.StringTemplateLoader"/>
+
+	<bean id="outboundTemplateUtil" class="com.citi.rulefabricator.outbounds.file.query.processor.OutboundTemplateUtil">
+		<property name="configuration" ref="freemarkerConfig"/>
+	</bean>
+	
+</beans>

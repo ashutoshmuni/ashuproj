@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:amq="http://activemq.apache.org/schema/core"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd
+    	http://www.springframework.org/schema/util
+    	http://www.springframework.org/schema/util/spring-util-3.0.xsd
+		http://www.springframework.org/schema/jms 
+        http://www.springframework.org/schema/jms/spring-jms.xsd
+        http://activemq.apache.org/schema/core 
+        http://activemq.apache.org/schema/core/activemq-core-5.6.0.xsd
+        http://www.springframework.org/schema/jee  
+        http://www.springframework.org/schema/jee/spring-jee-3.0.xsd">
+
+
+	<!-- create a connection factory-->
+	<jee:jndi-lookup id="mqConnectionFactory" jndi-name="${jms.bpm.queue.connection.factory}" />  
+	
+	<jee:jndi-lookup id="rfToBpmRequestQueue" jndi-name="${jms.bpm.workflow.request.queue}"  />  
+	<jee:jndi-lookup id="bpmToRfResponseQueue" jndi-name="${jms.bpm.workflow.response.queue}" />
+	<jee:jndi-lookup id="rfToEBXRequestQueue" jndi-name="${jms.mapgroup.request.queue}" />
+	<jee:jndi-lookup id="ebxToRFResponseQueue" jndi-name="${jms.mapgroup.response.queue}" />
+	<!-- <jee:jndi-lookup id="bpmToRfErrorQueue" jndi-name="${jms.bpm.workflow.response.error.queue}" />
+	<jee:jndi-lookup id="rfToBpmErrorQueue" jndi-name="${jms.bpm.workflow.request.error.queue}" /> -->
+	
+	<jee:jndi-lookup id="fdlToRfQueue" jndi-name="${jms.fdl.request.queue}" />
+	<jee:jndi-lookup id="rfToFdlQueue" jndi-name="${jms.fdl.response.queue}" />
+	<jee:jndi-lookup id="l2gToRfQueue" jndi-name="${jms.l2g.request.queue}" />
+	<jee:jndi-lookup id="rfTol2gQueue" jndi-name="${jms.l2g.response.queue}" />
+	
+	
+	<!-- CachingConnectionFactory Definition, sessionCacheSize property is the number of sessions to cache -->
+	<bean id="connectionFactory" class="org.springframework.jms.connection.CachingConnectionFactory">
+		<constructor-arg ref="mqConnectionFactory" />
+		<!-- <property name="sessionCacheSize" value="10" /> default caching is 1-->
+	</bean>
+	<!-- JmsTemplate Definition -->
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+	   <constructor-arg ref="connectionFactory"/>
+	</bean>
+	
+	<bean id="jmsDestinationResolver" class="org.springframework.jms.support.destination.BeanFactoryDestinationResolver " />
+	
+	<!-- listener container definition using the jms namespace, concurrency is the max number of concurrent listeners that can be started -->
+	<jms:listener-container concurrency="3" destination-resolver="jmsDestinationResolver" >
+		<jms:listener destination="bpmToRfResponseQueue" ref="bpmResponseListener" />
+		<jms:listener destination="ebxToRFResponseQueue" ref="mapGroupResponseListener" />
+		<jms:listener destination="fdlToRfQueue" ref="fdlTriggerListener" />
+		<jms:listener destination="l2gToRfQueue" ref="l2gTriggerListener" />
+		<!-- <jms:listener id="bpmErrorListener" destination="bpmToRfErrorQueue" ref="bpmErrorListener" /> -->
+	</jms:listener-container>
+	
+	<bean id="msgSender" class="com.citi.rulefabricator.jms.sender.JMSMessageSender">
+		<constructor-arg name="jmsTemplate" ref="jmsTemplate"/>
+	</bean>
+	
+	<bean id="bpmResponseListener" class="com.citi.rulefabricator.jms.listener.BPMWorkflowResponseListener">
+		<property name="xmlMapper" ref="xmlMapper"/>
+		<property name="bpmWorkflowService" ref="bpmWorkflowService"/>
+	</bean>
+	
+	<bean id="mapGroupResponseListener" class="com.citi.rulefabricator.jms.listener.MapGroupResponseListener">
+		<property name="xmlMapper" ref="mapGroupXmlMapper"/>
+		<property name="mapGroupSyncLogService" ref="mapGroupSyncLogService"></property>
+	</bean>
+	
+	<bean id="fdlTriggerListener" class="com.citi.rulefabricator.jms.listener.FdlTriggerListener">
+		<property name="xmlMapper" ref="outboundXmlMapper"/>
+		<property name="msgSender" ref="msgSender"/>		
+    	<property name="destination" ref="rfToFdlQueue"/>
+    	<property name="outboundExportFileManager" ref="outBoundsExportFileManager"/>		
+    	<property name="fileTransferDetService" ref="fileTransferDetServiceImpl"/>	
+	</bean>	
+	<bean id="l2gTriggerListener" class="com.citi.rulefabricator.jms.listener.L2GTriggerListener">
+		<property name="xmlMapper" ref="outboundXmlMapper"/>
+		<property name="msgSender" ref="msgSender"/>		
+    	<property name="destination" ref="rfToFdlQueue"/>	
+    	<property name="outboundExportFileManager" ref="outBoundsExportFileManager"/>
+	</bean>	
+	
+	
+	<!-- <bean id="bpmErrorListener" class="com.citi.rulefabricator.jms.listener.BPMWorkflowErrorListener">
+		<property name="xmlMapper" ref="xmlMapper"/>
+		<property name="bpmWorkflowService" ref="bpmWorkflowService"/>
+	</bean> -->
+	
+    <bean id="bpmWorkflowService" class="com.citi.rulefabricator.services.impl.BPMWorkflowServiceImpl">
+    	<property name="xmlMapper" ref="xmlMapper"/>
+    	<property name="msgSender" ref="msgSender"/>
+    	<property name="destination" ref="rfToBpmRequestQueue"/>
+    	<property name="myRequestsService" ref="myRequestsService" />
+    	<property name="bpmWorkflowLogDAO" ref="bpmWorkflowLogDAO"/>
+    	<property name="sequenceMongoDAOImpl" ref="sequenceMongoDAOImpl" />
+		<property name="mongoUtil" ref="mongoUtil" />
+    	<property name="userService" ref="userServiceImpl"/>
+    	<property name="changeRequestSummaryService"  ref="changeRequestSummaryService"/>
+    </bean>
+    
+    <bean id="mapGroupJMSHelper" class="com.citi.rulefabricator.jms.helper.MapGroupJMSHelper">
+    	<property name="actorSystem" ref="actorSystem"/>
+	</bean>
+    
+</beans>
